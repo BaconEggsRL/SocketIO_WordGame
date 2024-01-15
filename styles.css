@@ -1,0 +1,52 @@
+/* Type selectors -- all "body" elements will use this style.*/
+/* rem is a unit which changes the size based on the text size of the html element. 
+So 3rem would be 3 times the text size of the "body" element.
+Making the rem bigger would increase the gap between the input form and the message list.*/
+body { 
+    margin: 0; 
+    padding-bottom: 3rem;
+    /* border: 5px solid red; */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+}
+
+/* ID selectors (#) -- "#form" corresponds to an HTML element with id="form". */
+#form { 
+    background: rgba(0, 0, 0, 0.15); 
+    padding: 0.25rem; 
+    position: fixed; bottom: 0; left: 0; right: 0; 
+    display: flex; 
+    height: 3rem; 
+    box-sizing: border-box; 
+    backdrop-filter: blur(10px); 
+}
+
+/* Child selectors (>) -- all childs of #form with type "input" have this style. */
+#form > input { 
+    border: none; 
+    padding: 0 1rem; 
+    flex-grow: 1; 
+    border-radius: 2rem; 
+    margin: 0.25rem; 
+}
+/* Prevent the browser from outlining or highlighting the text field when we select it. */
+#form > input:focus { outline: none; }
+
+/* Child selectors (>) -- all childs of #form with type "button" have this style. */
+#form > button { 
+    background: #333; 
+    border: none; 
+    padding: 0 1rem; 
+    margin: 0.25rem; 
+    border-radius: 3px; 
+    outline: none; 
+    color: #fff; 
+}
+
+/* messages is an unordered list (ul).
+Here we define the style type to be "none" so that there are no bullet points. */
+#messages { list-style-type: none; margin: 0; padding: 0; }
+/* Each "li" or list item has some vertical padding between elements (0.5rem) 
+and some horizontal padding from the left side of the page (1rem). */
+#messages > li { padding: 0.5rem 1rem; }
+/* Assign a grey smokey style to odd elements in the list (1st, 3rd, 5th message, etc.) */
+#messages > li:nth-child(odd) { background: #efefef; }
