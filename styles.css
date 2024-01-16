@@ -50,3 +50,4 @@ and some horizontal padding from the left side of the page (1rem). */
 #messages > li { padding: 0.5rem 1rem; }
 /* Assign a grey smokey style to odd elements in the list (1st, 3rd, 5th message, etc.) */
 #messages > li:nth-child(odd) { background: #efefef; }
+/* background: #efefef; */

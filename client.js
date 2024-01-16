@@ -14,7 +14,8 @@ const typing_timeout_time = 2000;
 var is_typing = false;
 
 // init
-const regex_punctuation = /[!"#$%&'()*+, -—.\/:;<=>?@[\]^_`{|}~]+[--]$/;
+const regex_punctuation = /["#$%&'()*+, -—\/:;<=>@[\]^_`{|}~]+[--]$/;
+const regex_midsentence = /["#$%&'()*+, -—\/:;<=>@[\]^_`{|}~]+[--]$/;
 const regex_endofsentence = /(?<![?.!])[?.!]{1,3}(?!([?.!]))$/;
 const regex_em_dash = /(--)$/;
 let username;
@@ -22,8 +23,6 @@ let words;
 let sentence = [];
 const socket = io();
 socket.on("init", async function(users, server_words) {
-
-    console.log("init");
 
     // list of users
     usr = ""
@@ -36,23 +35,15 @@ socket.on("init", async function(users, server_words) {
     } else {
         usr = "No other users are currently online. \n\n"
     }
-    console.log(usr)
 
-    // word list
+    // list of valid words
     words = new Set(server_words)
-    
-    console.log('word check below:')
-    //console.log(words)
-    console.log(words.has("a"))
-
-
 
     ///////////////////////////////////////////////////////
     
     // loop prompt until we get a valid name
     let pmsg = "Please enter a unique username:\n(Usernames can be any valid string under 26 characters.)\n(Hit 'Cancel' to be assigned a random username.)\n"
     let err_msg = ""
-
 
     // ENTER LOOP
     looping = true
@@ -64,13 +55,13 @@ socket.on("init", async function(users, server_words) {
         if (temp_name === null) {
             temp_name = 'guest-' + socket.id
         }
-        console.log('temp_name = ' + temp_name);
+        // console.log('temp_name = ' + temp_name);
 
         // check if valid
         try {
             const response = await socket.timeout(5000).emitWithAck('is_valid', temp_name);
-            console.log('is_valid = ' + response.status); // is_valid
-            console.log('err_msg = ' + response.message); // err msg
+            // console.log('name is_valid = ' + response.status); // is_valid
+            // console.log('name err_msg = ' + response.message); // err msg
             looping = !response.status
             err_msg = response.message
         } catch (e) {
@@ -136,7 +127,7 @@ input.addEventListener('keyup', function() {
         /* Only emit event if user was not typing before. */
         if (!is_typing) {
 
-            console.log(username + " is typing")
+            // console.log(username + " is typing")
             is_typing = true
             socket.emit('user_typing', {
                 username: username,
@@ -156,11 +147,24 @@ async function wordIsValid(word) {
 
     let end = false;
 
-    // Remove end-of-sentence punctuation.
+    // Check for end-of-sentence punctuation.
     if (regex_endofsentence.test(word)) {
         word = word.replace(regex_endofsentence,"")
-        console.log("word = '" + word + "'");
+        console.log("word (end punc removed) = '" + word + "'");
         end = true;
+
+        // If word was only punctuation: allow but only if sentence is not empty
+        // Also add it to the last word so there isn't a weird space
+        if (sentence.length > 0) {
+            if (word.length == 0) {
+                response = {
+                    status: true,
+                    message: "only_punc",
+                    end: true,
+                }
+                return response;
+            }
+        }
     }
     
     // Check for punctuation at end of word
@@ -168,6 +172,16 @@ async function wordIsValid(word) {
     // if (endsWithPunc) {
     //     console.log("ends with punc")
     // }
+
+    // Word can't be an empty string
+    if (word.length == 0) {
+        response = {
+            status: false,
+            message: "empty string",
+            end: false,
+        }
+        return response;
+    }
 
     // Word must be 26 characters or less
     if (word.length > 26) {
@@ -207,7 +221,7 @@ async function wordIsValid(word) {
     // If nothing bad happened then return true
     response = {
         status: true,
-        message: "no fault found",
+        message: "",
         end: end,
     }
     return response;
@@ -225,23 +239,44 @@ form.addEventListener('submit', async (e) => {
             if (sentence.length == 0) {
                 word = word[0].toUpperCase() + word.slice(1);
             }
+
+            console.log("word = '" + word + "'")
             const response = await wordIsValid(word);
             const is_valid = response.status
-            console.log("'" + word + "' is valid?: " + is_valid)  // is_valid
-            console.log('err_msg = ' + response.message);  // err msg
-            console.log('end = ' + response.end); // end sentence?
+            const end_of_sentence = response.end
+            const word_msg = response.message
 
             // Add word to sentence/chat if valid
             if (is_valid) {
-                sentence.push(word)
-                console.log(sentence)
-
+                
+                // Add message to chat
                 addMessage(username + ": " + word);
                 socket.emit("chat_message", {
                     username: username,
                     message: word,
                 });
+
+                // Add message to sentence
+                if (word_msg != "only_punc") {
+                    sentence.push(word);
+                } else {
+                    sentence.push(sentence.pop() + word);
+                }
+                
+                console.log(sentence)
+                if (end_of_sentence) {
+                    // Add sentence to chat
+                    console.log('end = ' + end_of_sentence); // end sentence?
+                    addSentence("Sentence: " + "'" + sentence.join(' ') + "'")
+                    sentence = [];
+                }
+
+            } else {
+                // log error
+                console.log('is_valid = ' + is_valid);  // is_valid
+                console.log('err_msg = ' + response.message);  // err msg
             }
+
         } catch (e) {
             // the server did not acknowledge the event in the given delay
             throw "APATT ERROR: No response."
@@ -258,6 +293,16 @@ form.addEventListener('submit', async (e) => {
     }
 });
 
+
+/* Sentence function */
+function addSentence(message) {
+    const li = document.createElement("li");
+    li.style.background = "#96e2d8";
+    li.innerHTML = message;
+    messages.appendChild(li);
+    window.scrollTo(0, document.body.scrollHeight);
+}
+
 /* Generic chat_message function */
 function addMessage(message) {
     const li = document.createElement("li");
@@ -268,7 +313,7 @@ function addMessage(message) {
 
 /* User typing timeout */
 function timeoutFunction() {
-    console.log(username + " stopped typing")
+    // console.log(username + " stopped typing")
     is_typing = false
     socket.emit('user_typing', {
         username: username,
