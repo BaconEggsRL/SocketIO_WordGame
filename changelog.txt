@@ -1,7 +1,6 @@
 TODO:
-
 -send sentence to server
-(-add punctuation in sentence?)
+(-add dashes and em dashes?)
 
 
 

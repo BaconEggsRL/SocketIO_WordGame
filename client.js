@@ -13,11 +13,15 @@ var typing_timeout;
 const typing_timeout_time = 2000;
 var is_typing = false;
 
-// init
-const regex_punctuation = /["#$%&'()*+, -—\/:;<=>@[\]^_`{|}~]+[--]$/;
-const regex_midsentence = /["#$%&'()*+, -—\/:;<=>@[\]^_`{|}~]+[--]$/;
+
+// regex
+//const regex_punctuation = /["#$%&'()*+, -—\/:;<=>@[\]^_`{|}~]+[--]$/;
+//const regex_emdash = /(--)$/;
 const regex_endofsentence = /(?<![?.!])[?.!]{1,3}(?!([?.!]))$/;
-const regex_em_dash = /(--)$/;
+const regex_midsentence = /[,:;]$/;
+
+
+// init
 let username;
 let words;
 let sentence = [];
@@ -159,19 +163,33 @@ async function wordIsValid(word) {
             if (word.length == 0) {
                 response = {
                     status: true,
-                    message: "only_punc",
+                    message: "only_punc",  // this message pops last word and re-adds with punc
                     end: true,
                 }
                 return response;
             }
         }
     }
-    
-    // Check for punctuation at end of word
-    // const endsWithPunc = regex_punctuation.test(word)
-    // if (endsWithPunc) {
-    //     console.log("ends with punc")
-    // }
+
+    // Check for mid-sentence punctation.
+    if (regex_midsentence.test(word)) {
+        word = word.replace(regex_midsentence,"")
+        console.log("word (mid punc removed) = '" + word + "'");
+        end = false;
+
+        // If word was only punctuation: allow but only if sentence is not empty
+        // Also add it to the last word so there isn't a weird space
+        if (sentence.length > 0) {
+            if (word.length == 0) {
+                response = {
+                    status: true,
+                    message: "only_punc",  // this message pops last word and re-adds with punc
+                    end: false,
+                }
+                return response;
+            }
+        }
+    }
 
     // Word can't be an empty string
     if (word.length == 0) {
