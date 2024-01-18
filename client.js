@@ -7,6 +7,7 @@ const form = document.getElementById('form');
 const input = document.getElementById('input');
 const messages = document.getElementById('messages');
 const typing = document.getElementById('typing');
+const users_field = document.getElementById('users_field');
 
 // is_typing
 var typing_timeout;
@@ -25,13 +26,16 @@ const regex_midsentence = /[,:;]$/;
 let username;
 let words;
 let sentence = [];
+let users = [];
+let turn_user; // username of current turn
+
 const socket = io();
 socket.on("init", async function(users, server_words) {
 
     // list of users
     usr = ""
     if (users.length > 0) {
-        usr = "Users currently online: \n"
+        usr = "Users online: \n"
         for (let user of users)  {
             usr = usr.concat(" - '", user.name, "'\n")
         }
@@ -68,6 +72,7 @@ socket.on("init", async function(users, server_words) {
             // console.log('name err_msg = ' + response.message); // err msg
             looping = !response.status
             err_msg = response.message
+            users = response.users
         } catch (e) {
             // the server did not acknowledge the event in the given delay
             throw "APATT ERROR: No response."
@@ -82,6 +87,10 @@ socket.on("init", async function(users, server_words) {
 
     // if valid, set username = temp_name
     username = temp_name;
+    // if we are the only user, set turn user to us
+    if (users.length == 0) {
+        turn_user = username
+    }
 
     // get message history
     try {
@@ -97,24 +106,45 @@ socket.on("init", async function(users, server_words) {
     }
 
     // show join message
-    addMessage("You have joined the chat as '" + username  + "'.");
+    addMessage("You have joined the chat as '" + username  + "'.", color="#ffcccb");
     socket.emit("user_join", username);
 
 });
 
-
-
-
 socket.on("user_join", function(data) {
-    addMessage(data + " just joined the chat!");
+    addMessage(data.username + " just joined the chat!", color="#ffcccb");
 });
 
 socket.on("user_leave", function(data) {
-    addMessage(data + " has left the chat.");
+    addMessage(data.username + " has left the chat.", color="#ffcccb");
 });
 
 socket.on("chat_message", function(data) {
-    addMessage(data.username + ": " + data.message);
+    addMessage(data.username + ": " + data.message, color=data.color);
+});
+
+socket.on("update_turn_user", function(data) {
+    users = data.users;
+    turn_user = data.turn_user;
+    console.log("turn_user = ", turn_user)
+
+    let msg = users.map(u => u.name).join(', ')
+    msg = "Users online: " + msg
+    regex = new RegExp(turn_user);
+    console.log("regex = ", regex)
+
+    //console.log("regex test = ", regex.test(msg)); // expect true
+    msg = msg.replace(regex, "<em><b>" + String(turn_user) + "</b></em>")
+    //let msg = JSON.stringify(users)
+    //let msg = turn_user + ", " + turn_user;
+
+    console.log("msg = ", msg)
+    users_field.innerHTML = '<p>' + msg + '</p>';
+});
+
+socket.on("update_sentence", function(data) {
+    sentence = data.sentence;
+    console.log(sentence)
 });
 
 socket.on('user_typing', function(data){
@@ -127,21 +157,23 @@ socket.on('user_typing', function(data){
 
 /* Check if user is typing */
 input.addEventListener('keyup', function() {
-    if (input.value) {
-        /* Only emit event if user was not typing before. */
-        if (!is_typing) {
-
-            // console.log(username + " is typing")
-            is_typing = true
-            socket.emit('user_typing', {
-                username: username,
-                typing: true,
-            });
-
-            clearTimeout(typing_timeout)
-            typing_timeout = setTimeout(timeoutFunction, typing_timeout_time)
+    if (turn_user == username) {
+        if (input.value) {
+            /* Only emit event if user was not typing before. */
+            if (!is_typing) {
+    
+                // console.log(username + " is typing")
+                is_typing = true
+                socket.emit('user_typing', {
+                    username: username,
+                    typing: true,
+                });
+    
+                clearTimeout(typing_timeout)
+                typing_timeout = setTimeout(timeoutFunction, typing_timeout_time)
+            }
+            
         }
-        
     }
 })
 
@@ -150,6 +182,16 @@ input.addEventListener('keyup', function() {
 async function wordIsValid(word) {
 
     let end = false;
+
+    // Check if it is our turn to type
+    if (turn_user != username) {
+        response = {
+            status: false,
+            message: "turn_user != username",
+            end: false,
+        }
+        return response;
+    }
 
     // Check for end-of-sentence punctuation.
     if (regex_endofsentence.test(word)) {
@@ -250,7 +292,6 @@ async function wordIsValid(word) {
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (input.value) {
-
         // Check if valid word
         try {
             let word = String(input.value);
@@ -281,13 +322,24 @@ form.addEventListener('submit', async (e) => {
                     sentence.push(sentence.pop() + word);
                 }
                 
-                console.log(sentence)
+                // Add sentence to chat
                 if (end_of_sentence) {
-                    // Add sentence to chat
                     console.log('end = ' + end_of_sentence); // end sentence?
-                    addSentence("Sentence: " + "'" + sentence.join(' ') + "'")
+                    data = {
+                        username: "Sentence",
+                        message: "'" + sentence.join(' ') + "'",
+                        color: "#96e2d8",
+                    }
+                    addMessage(data.username + ": " + data.message, color=data.color);
+                    socket.emit("server_message", data);
                     sentence = [];
                 }
+
+                // update other clients with current sentence
+                console.log(sentence)
+                socket.emit("broadcast_sentence", {
+                    sentence: sentence,
+                })
 
             } else {
                 // log error
@@ -311,19 +363,10 @@ form.addEventListener('submit', async (e) => {
     }
 });
 
-
-/* Sentence function */
-function addSentence(message) {
-    const li = document.createElement("li");
-    li.style.background = "#96e2d8";
-    li.innerHTML = message;
-    messages.appendChild(li);
-    window.scrollTo(0, document.body.scrollHeight);
-}
-
 /* Generic chat_message function */
-function addMessage(message) {
+function addMessage(message, color="#efefef") {
     const li = document.createElement("li");
+    li.style.background = color;
     li.innerHTML = message;
     messages.appendChild(li);
     window.scrollTo(0, document.body.scrollHeight);

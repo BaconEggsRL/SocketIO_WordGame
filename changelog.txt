@@ -1,6 +1,10 @@
 TODO:
--send sentence to server
+
 (-add dashes and em dashes?)
 
+-bug: If,. is valid.
+because it removes the end punc,
+but does not return til end.
+So it also removes the comma.
 
 

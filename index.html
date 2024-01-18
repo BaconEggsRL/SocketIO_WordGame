@@ -6,21 +6,30 @@
     <link rel="shortcut icon" href="#" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="styles.css" />
-    <title>Socket.IO chat</title>
+    <title>SocketIO_WordGame</title>
 
   </head>
 
   <body>
 
     <!-- body -- layout of the page, styles.css will style these. -->
-    <ul id="messages"></ul>
 
-    <ul id="typing"></ul>
+    <div>
+        <p id="users_field"></p>
+    </div>
 
-    <form id="form" action="">
-      <input type="text" id="input" autocomplete="off" /><button>Send</button>
-    </form>
 
+    <div>
+        <ul id="messages"></ul>
+
+        <ul id="typing"></ul>
+
+        <form id="form" action="">
+        <input type="text" id="input" autocomplete="off" /><button>Send</button>
+        </form>
+    </div>
+
+    
     <!-- clientside socket.io -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="client.js"></script>

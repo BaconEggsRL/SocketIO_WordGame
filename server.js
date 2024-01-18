@@ -31,8 +31,10 @@ app.get('/', (req, res) => {
 });
 
 /* Serve web socket connections */
+let turn_user;
 const users = [];
 const history = [];
+const sentence = [];
 const maxHistory = 10;
 io.on('connection', (socket) => {
 
@@ -68,6 +70,15 @@ io.on('connection', (socket) => {
         response = {
             status: stat,
             message: msg,
+            users: users,
+        }
+        callback(response);
+    });
+
+    socket.on("get_users", (callback) => {
+        // return
+        response = {
+            users: users,
         }
         callback(response);
     });
@@ -82,30 +93,100 @@ io.on('connection', (socket) => {
 
     socket.on('user_join', (data) => {
         socket.username = data;
+        if (users.length == 0) {
+            turn_user = data;
+        }
         users.push({
             id: socket.id,
             name: data,
         });
         console.log(users);
         // broadcast new user
-        socket.broadcast.emit('user_join', data);
+        socket.broadcast.emit('user_join', {
+            username: data,
+        });
+        io.emit('update_turn_user', {
+            users: users,
+            turn_user: turn_user,
+        });
     });
 
     socket.on('disconnect', () => {
-        users.splice(users.findIndex(usr => usr.id === socket.id), 1);
+
+        // get next user
+        var userPos = users.findIndex(usr => usr.id === socket.id)
+        var userObj = users[userPos];
+        var nextUserPos = (userPos + 1) % users.length;
+        var nextUserObj = users[nextUserPos];
+        console.log("userPos = " + userPos, ", name = " + userObj.name)
+        console.log("nextUserPos = " + nextUserPos, ", next_name = " + nextUserObj.name)
+
+        turn_user = nextUserObj.name
+
+        // remove user
+        users.splice(userPos, 1);
         console.log(users);
-        socket.broadcast.emit('user_leave', socket.username);
+
+        socket.broadcast.emit('user_leave', {
+            username: socket.username,
+        });
+        io.emit('update_turn_user', {
+            users: users,
+            turn_user: turn_user,
+        });
     });
 
+    // change current user
     socket.on('chat_message', (data) => {
+        // get next user
+        var userPos = users.map(function(x) {return x.name; }).indexOf(data.username);
+        var userObj = users[userPos];
+        var nextUserPos = (userPos + 1) % users.length;
+        var nextUserObj = users[nextUserPos];
+
+        if (turn_user != userObj.name) {
+            console.log("turn_user = " + turn_user, ", Chat userObj.name = " + userObj.name)
+            throw new Error("ERROR: USER MIS-MATCH");
+        }
+
+        console.log("userPos = " + userPos, ", name = " + userObj.name)
+        console.log("nextUserPos = " + nextUserPos, ", next_name = " + nextUserObj.name)
+
+        turn_user = nextUserObj.name;
+
         if (history.length >= maxHistory) {
             history.shift()  // remove oldest chat message
         }
         history.push(data)
-        console.log(history)
+        //console.log(history)
         socket.broadcast.emit('chat_message', {
             username: data.username, 
             message: data.message,
+            color: data.color,
+        });
+        io.emit('update_turn_user', {
+            users: users,
+            turn_user: turn_user,
+        });
+    });
+
+    // do not change current user
+    socket.on('server_message', (data) => {
+        if (history.length >= maxHistory) {
+            history.shift()  // remove oldest chat message
+        }
+        history.push(data)
+        //console.log(history)
+        socket.broadcast.emit('chat_message', {
+            username: data.username, 
+            message: data.message,
+            color: data.color,
+        });
+    });
+
+    socket.on('broadcast_sentence', (data) => {
+        socket.broadcast.emit('update_sentence', {
+            sentence: data.sentence, 
         });
     });
 
