@@ -11,5 +11,8 @@
     },
     "scripts": {
         "start": "node server.js"
+    },
+    "devDependencies": {
+        "@flydotio/dockerfile": "^0.5.0"
     }
 }

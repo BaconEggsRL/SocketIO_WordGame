@@ -7,4 +7,6 @@ because it removes the end punc,
 but does not return til end.
 So it also removes the comma.
 
+-fix formatting (bring messages to bottom?)
+
 

@@ -4,6 +4,7 @@
 
 // html
 const form = document.getElementById('form');
+const btn_help = document.getElementById('btn_help');
 const input = document.getElementById('input');
 const messages = document.getElementById('messages');
 const typing = document.getElementById('typing');
@@ -150,6 +151,7 @@ socket.on("update_sentence", function(data) {
 socket.on('user_typing', function(data){
     if (data.typing) {
         typing.innerHTML = '<p><em>' + data.username + ' is typing...</em></p>';
+        window.scrollTo(0, document.body.scrollHeight);
     } else {
         typing.innerHTML = ''
     }
@@ -286,6 +288,30 @@ async function wordIsValid(word) {
     }
     return response;
 }
+
+/* Check if other button pressed (?) */
+btn_help.addEventListener('click', async (e) => {
+    e.preventDefault();
+    console.log("btn_help")
+
+    alert(
+        "SocketIO_WordGame is an online implementation of the classic 'One Word At A Time' game, where each person can only say one word. \n\n" + 
+        "During your turn, your username will turn bold, and you will be able to enter one word in the chat. Type your word and hit enter (or press the 'Send' button.) \n\n" + 
+        "If you tried to submit a word and nothing happened, it might not be your turn yet, or you did not enter a valid word. See below for more information on valid words.* \n\n" + 
+        "Each player will have a turn until someone decides to end the sentence by adding a period, exclamation point, or question mark at the end of their word. \n\n" + 
+        "You can also choose to end the sentence without typing any word (just type a period, exclamation point, or question mark.) Note this will only work if there is at least one word already in the sentence. \n\n" + 
+        "Play will continue in the same order, with the next player beginning the start of the next sentence."
+    )
+
+    alert(
+        "*Note on valid words: For a word to be accepted, it must be your turn, and the word must be a valid word in the English language. \n\n" + 
+        "The word must be spelled correctly, although there are a few exceptions for slang terms. \n\n" + 
+        "Words are limited to 26 characters to prevent overflow. Numbers under 26 characters are also accepted. \n\n" + 
+        "That's it! Enjoy! \n\n\n\n" +
+        "Developed by Austin \n\n" + 
+        "Technologies used: HTML, Javascript, CSS. NodeJS (express, Socket.IO). Published with fly.io"
+    )
+});
 
 
 /* Check if submit message and send to server */
